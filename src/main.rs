@@ -8,7 +8,7 @@ fn main() {
 
     let mut cmd = Command::new("cargo")
         .arg("clippy")
-        .arg("--color=never")
+        .arg("--color=always")
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
@@ -22,15 +22,23 @@ fn main() {
         let mut skip = false;
         for line in br.lines() {
             let line = line.unwrap();
+            let escaped_line_raw = strip_ansi_escapes::strip(&line).unwrap();
+            let escaped_line = String::from_utf8_lossy(&escaped_line_raw);
             if next_line_is_file {
                 // parse file name
-                let file = line.split(' ').last().unwrap().split(':').next().unwrap();
+                let file = escaped_line
+                    .split(' ')
+                    .last()
+                    .unwrap()
+                    .split(':')
+                    .next()
+                    .unwrap();
                 if !interests.iter().any(|i| i == file) {
                     skip = true
                 }
                 next_line_is_file = false
             }
-            match line.starts_with("warning:") {
+            match escaped_line.starts_with("warning:") {
                 true => {
                     skip = false;
                     next_line_is_file = true;
